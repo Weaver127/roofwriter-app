@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useInspection } from "../state/InspectionContext";
 import { manual } from "../types/inspection";
 import { PhotoField } from "../components/PhotoField";
+import { AnalyzablePhotoField } from "../components/AnalyzablePhotoField";
 import type { MaterialPrimary, MaterialSecondary, InsurableEventType } from "../types/inspection";
 
 const METAL_OPTIONS: MaterialSecondary[] = [
@@ -31,18 +32,10 @@ export default function RoofAreaDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { roofAreaId } = route.params;
-  const { inspection, updateRoofArea } = useInspection();
+  const { inspection, updateRoofArea, update } = useInspection();
 
   const area = inspection.roofAreas.find((a) => a.id === roofAreaId);
 
-  // Pitch is kept as local text state, separate from the numeric value in
-  // context. This fixes a real bug found in testing: deriving the
-  // TextInput's value directly from String(pitchDegrees.value) on every
-  // keystroke meant typing "22." immediately got reformatted back to "22"
-  // the instant parseFloat dropped the trailing decimal point, making it
-  // impossible to ever type a decimal. Local text state lets the raw
-  // string sit untouched while typing; only valid parsed numbers get
-  // pushed up to context (and therefore into the compliance calculation).
   const [pitchText, setPitchText] = useState(area?.pitchDegrees.confirmed ? String(area.pitchDegrees.value) : "");
   const [labelText, setLabelText] = useState(area?.label ?? "");
 
@@ -175,10 +168,26 @@ export default function RoofAreaDetailScreen() {
         </>
       )}
 
-      <PhotoField
+      <AnalyzablePhotoField
         label="Damage photos for this roof area"
         photos={area.damagePhotoUrls}
         onChange={(photos) => updateRoofArea(roofAreaId, (a) => ({ ...a, damagePhotoUrls: photos }))}
+        context={`Roof area: ${area.label || area.roofType.value}. Material: ${area.materialSecondary.value.replace(/_/g, " ")}. Pitch: ${area.pitchDegrees.confirmed ? area.pitchDegrees.value + "°" : "not recorded"}.`}
+        onAnalysisResult={(result) => {
+          update((draft) => ({
+            ...draft,
+            findings: {
+              ...draft.findings,
+              insurableExternalDamageSummary: {
+                value: draft.findings.insurableExternalDamageSummary.confirmed
+                  ? `${draft.findings.insurableExternalDamageSummary.value}\n\n${result.description}`
+                  : result.description,
+                source: "ai-draft",
+                confirmed: false,
+              },
+            },
+          }));
+        }}
       />
 
       <Pressable style={styles.nextBtn} onPress={() => navigation.goBack()}>
