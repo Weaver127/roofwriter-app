@@ -1,6 +1,6 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createStackNavigator } from "@react-navigation/stack";
 
 import JobDetailsScreen from "../screens/JobDetailsScreen";
 import RoofAccessScreen from "../screens/RoofAccessScreen";
@@ -28,15 +28,8 @@ export type RootStackParamList = {
   ReportPreview: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createStackNavigator<RootStackParamList>();
 
-/**
- * Linear flow matching the product spec's section order (3.1 through 4).
- * A real app will likely want a tab bar or a "jump to any section" summary
- * screen once there's more than one working session per inspection — this
- * linear stack is the right starting shape for getting the flow correct
- * first, not the final navigation structure.
- */
 export function RootNavigator() {
   return (
     <NavigationContainer>
