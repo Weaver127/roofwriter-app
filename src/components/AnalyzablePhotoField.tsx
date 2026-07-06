@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import { API_BASE_URL } from "../constants/api";
 
 interface AnalysisResult {
@@ -28,6 +27,7 @@ export function AnalyzablePhotoField({
   required,
 }: AnalyzablePhotoFieldProps) {
   const [analyzingUri, setAnalyzingUri] = useState<string | null>(null);
+  const [base64Map, setBase64Map] = useState<Record<string, string>>({});
 
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -35,9 +35,11 @@ export function AnalyzablePhotoField({
       Alert.alert("Camera permission needed", "RoofWriter needs camera access to attach inspection photos.");
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.6, base64: true });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      onChange([...photos, result.assets[0].uri]);
+      const asset = result.assets[0];
+      if (asset.base64) setBase64Map((prev) => ({ ...prev, [asset.uri]: asset.base64! }));
+      onChange([...photos, asset.uri]);
     }
   };
 
@@ -47,8 +49,13 @@ export function AnalyzablePhotoField({
       Alert.alert("Photo library permission needed", "RoofWriter needs photo library access to attach existing photos.");
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsMultipleSelection: true });
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsMultipleSelection: true, base64: true });
     if (!result.canceled && result.assets?.length) {
+      const newBase64: Record<string, string> = {};
+      result.assets.forEach((a) => {
+        if (a.base64) newBase64[a.uri] = a.base64;
+      });
+      setBase64Map((prev) => ({ ...prev, ...newBase64 }));
       onChange([...photos, ...result.assets.map((a) => a.uri)]);
     }
   };
@@ -58,9 +65,14 @@ export function AnalyzablePhotoField({
   };
 
   const analyzePhoto = async (uri: string) => {
+    const base64 = base64Map[uri];
+    if (!base64) {
+      Alert.alert("Can't analyze this photo", "This photo's data isn't available for analysis (it may have been added before this feature was enabled). Try removing and re-adding it.");
+      return;
+    }
+
     setAnalyzingUri(uri);
     try {
-      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
       const response = await fetch(`${API_BASE_URL}/analyze-photo`, {
         method: "POST",
         headers: { "content-type": "application/json" },
