@@ -239,6 +239,7 @@ export type RoofAreaOutcome = "insurable" | "not_insurable" | "mixed";
 
 export interface RoofArea {
   id: string;
+  label?: string; // free-text name like "Main house", "Rear shed" — assessor-entered
   roofType: Confirmable<RoofType>;
 
   pitchDegrees: Confirmable<number>; // see PitchCaptureMethod below for provenance
@@ -363,7 +364,7 @@ export interface MakeSafe {
 // ---------------------------------------------------------------------------
 
 export type AccessoryType =
-  | "skylight" | "whirlybird_ventilator" | "solar_panel"
+  | "skylight" | "whirlybird_ventilator" | "solar_panel" | "solar_hot_water"
   | "gutter_mesh" | "flashing_dektite" | "ridge_capping" | "antenna" | "other";
 
 export interface Accessory {

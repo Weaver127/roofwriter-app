@@ -1,8 +1,9 @@
 import React from "react";
-import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useInspection } from "../state/InspectionContext";
 import { YesNoToggle } from "../components/ToggleGroup";
+import { PhotoField } from "../components/PhotoField";
 
 export default function MakeSafeScreen() {
   const navigation = useNavigation<any>();
@@ -13,9 +14,6 @@ export default function MakeSafeScreen() {
     update((draft) => {
       const nextMakeSafe = { ...draft.makeSafe, [key]: value };
       let actions = draft.actions;
-      // Mirrors the QA rule in src/lib/qa.ts: a "still needed" flip should
-      // create the escalation action automatically rather than relying on
-      // the assessor to remember a separate step.
       if (key === "stillNeeded" && value === true && !actions.some((a) => a.trigger === "make_safe_still_needed" && !a.resolved)) {
         actions = [
           ...actions,
@@ -37,6 +35,29 @@ export default function MakeSafeScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Was a make safe conducted?</Text>
       <YesNoToggle value={ms.conducted} onChange={(v) => setField("conducted", v)} />
+
+      {ms.conducted && (
+        <>
+          <Text style={styles.label}>Describe the works completed</Text>
+          <TextInput
+            style={styles.textarea}
+            multiline
+            placeholder="e.g. Tarped the rear roof face over the affected valley..."
+            value={ms.worksCompletedDescription?.value ?? ""}
+            onChangeText={(v) => setField("worksCompletedDescription", { value: v, source: "manual", confirmed: true })}
+          />
+          <PhotoField
+            label="Before photo"
+            photos={ms.beforePhotoUrl ? [ms.beforePhotoUrl] : []}
+            onChange={(photos) => setField("beforePhotoUrl", photos[photos.length - 1])}
+          />
+          <PhotoField
+            label="After photo"
+            photos={ms.afterPhotoUrl ? [ms.afterPhotoUrl] : []}
+            onChange={(photos) => setField("afterPhotoUrl", photos[photos.length - 1])}
+          />
+        </>
+      )}
 
       <Text style={styles.labelManual}>Is a make safe still needed?</Text>
       <YesNoToggle value={ms.stillNeeded} onChange={(v) => setField("stillNeeded", v)} manualOnly />
@@ -60,7 +81,7 @@ export default function MakeSafeScreen() {
       )}
 
       <Pressable style={styles.nextBtn} onPress={() => navigation.navigate("Accessories")}>
-        <Text style={styles.nextBtnText}>Next: Accessories</Text>
+        <Text style={styles.nextBtnText}>Next: Roof-top services</Text>
       </Pressable>
     </ScrollView>
   );
@@ -71,6 +92,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 4 },
   label: { fontSize: 12, color: "#8a8a90", marginTop: 14, marginBottom: 6 },
   labelManual: { fontSize: 12, color: "#b91c1c", marginTop: 14, marginBottom: 6 },
+  textarea: { borderWidth: 1, borderColor: "#d8d8dc", borderRadius: 8, padding: 10, fontSize: 13, minHeight: 60, textAlignVertical: "top", marginBottom: 8 },
   escalationBox: { backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#ef4444", borderRadius: 8, padding: 12, marginTop: 14 },
   escalationTitle: { fontSize: 12, fontWeight: "600", color: "#b91c1c", marginBottom: 6 },
   escalationBody: { fontSize: 11, color: "#b91c1c", marginBottom: 10 },

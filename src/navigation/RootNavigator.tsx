@@ -12,6 +12,7 @@ import FindingsScreen from "../screens/FindingsScreen";
 import MakeSafeScreen from "../screens/MakeSafeScreen";
 import AccessoriesScreen from "../screens/AccessoriesScreen";
 import ReviewSubmitScreen from "../screens/ReviewSubmitScreen";
+import ReportPreviewScreen from "../screens/ReportPreviewScreen";
 
 export type RootStackParamList = {
   JobDetails: undefined;
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   MakeSafe: undefined;
   Accessories: undefined;
   ReviewSubmit: undefined;
+  ReportPreview: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,8 +49,9 @@ export function RootNavigator() {
         <Stack.Screen name="Maintenance" component={MaintenanceScreen} options={{ title: "Maintenance" }} />
         <Stack.Screen name="Findings" component={FindingsScreen} options={{ title: "Findings" }} />
         <Stack.Screen name="MakeSafe" component={MakeSafeScreen} options={{ title: "Make safe" }} />
-        <Stack.Screen name="Accessories" component={AccessoriesScreen} options={{ title: "Accessories" }} />
+        <Stack.Screen name="Accessories" component={AccessoriesScreen} options={{ title: "Roof-top services" }} />
         <Stack.Screen name="ReviewSubmit" component={ReviewSubmitScreen} options={{ title: "Review & submit" }} />
+        <Stack.Screen name="ReportPreview" component={ReportPreviewScreen} options={{ title: "Report preview" }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -33,7 +33,7 @@ export default function RoofAreasListScreen() {
           <View style={styles.card}>
             <Pressable onPress={() => navigation.navigate("RoofAreaDetail", { roofAreaId: item.id })}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.roofType.value}</Text>
+                <Text style={styles.cardTitle}>{item.label && item.label.trim() ? item.label : item.roofType.value}</Text>
                 <Text style={[styles.tierLabel, { color: tierColor[item.pitchCompliance.tier] }]}>
                   {item.pitchCompliance.tier.replace(/_/g, " ")}
                 </Text>

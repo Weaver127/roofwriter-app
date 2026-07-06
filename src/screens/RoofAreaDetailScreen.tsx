@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useInspection } from "../state/InspectionContext";
 import { manual } from "../types/inspection";
+import { PhotoField } from "../components/PhotoField";
 import type { MaterialPrimary, MaterialSecondary, InsurableEventType } from "../types/inspection";
 
 const METAL_OPTIONS: MaterialSecondary[] = [
@@ -33,6 +34,22 @@ export default function RoofAreaDetailScreen() {
   const { inspection, updateRoofArea } = useInspection();
 
   const area = inspection.roofAreas.find((a) => a.id === roofAreaId);
+
+  // Pitch is kept as local text state, separate from the numeric value in
+  // context. This fixes a real bug found in testing: deriving the
+  // TextInput's value directly from String(pitchDegrees.value) on every
+  // keystroke meant typing "22." immediately got reformatted back to "22"
+  // the instant parseFloat dropped the trailing decimal point, making it
+  // impossible to ever type a decimal. Local text state lets the raw
+  // string sit untouched while typing; only valid parsed numbers get
+  // pushed up to context (and therefore into the compliance calculation).
+  const [pitchText, setPitchText] = useState(area?.pitchDegrees.confirmed ? String(area.pitchDegrees.value) : "");
+  const [labelText, setLabelText] = useState(area?.label ?? "");
+
+  useEffect(() => {
+    if (area?.pitchDegrees.confirmed) setPitchText(String(area.pitchDegrees.value));
+  }, [area?.id]);
+
   if (!area) return null;
 
   const setPrimary = (primary: MaterialPrimary) =>
@@ -45,12 +62,17 @@ export default function RoofAreaDetailScreen() {
   const setSecondary = (secondary: MaterialSecondary) =>
     updateRoofArea(roofAreaId, (a) => ({ ...a, materialSecondary: manual(secondary) }));
 
-  const setPitch = (text: string) => {
+  const handlePitchChange = (text: string) => {
+    setPitchText(text);
     const num = parseFloat(text);
-    updateRoofArea(roofAreaId, (a) => ({
-      ...a,
-      pitchDegrees: manual(isNaN(num) ? 0 : num),
-    }));
+    if (!isNaN(num)) {
+      updateRoofArea(roofAreaId, (a) => ({ ...a, pitchDegrees: manual(num) }));
+    }
+  };
+
+  const handleLabelChange = (text: string) => {
+    setLabelText(text);
+    updateRoofArea(roofAreaId, (a) => ({ ...a, label: text }));
   };
 
   const setEventType = (eventType: InsurableEventType) =>
@@ -65,6 +87,14 @@ export default function RoofAreaDetailScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.label}>Area name (e.g. "Main house", "Rear shed")</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Optional label for this roof area"
+        value={labelText}
+        onChangeText={handleLabelChange}
+      />
+
       <Text style={styles.label}>Material — primary</Text>
       <View style={styles.chipRow}>
         {(["metal", "tile", "polycarbonate"] as MaterialPrimary[]).map((p) => (
@@ -93,13 +123,22 @@ export default function RoofAreaDetailScreen() {
         ))}
       </View>
 
+      {area.materialPrimary.value === "tile" && (
+        <PhotoField
+          label="Back-of-tile photo"
+          photos={area.materialPhotoUrl ? [area.materialPhotoUrl] : []}
+          onChange={(photos) => updateRoofArea(roofAreaId, (a) => ({ ...a, materialPhotoUrl: photos[photos.length - 1] }))}
+          required
+        />
+      )}
+
       <Text style={styles.label}>Pitch (degrees)</Text>
       <TextInput
         style={styles.input}
         keyboardType="decimal-pad"
-        placeholder="e.g. 22.2"
-        value={area.pitchDegrees.confirmed ? String(area.pitchDegrees.value) : ""}
-        onChangeText={setPitch}
+        placeholder="e.g. 22.5"
+        value={pitchText}
+        onChangeText={handlePitchChange}
       />
 
       {area.pitchDegrees.confirmed && (
@@ -135,6 +174,12 @@ export default function RoofAreaDetailScreen() {
           />
         </>
       )}
+
+      <PhotoField
+        label="Damage photos for this roof area"
+        photos={area.damagePhotoUrls}
+        onChange={(photos) => updateRoofArea(roofAreaId, (a) => ({ ...a, damagePhotoUrls: photos }))}
+      />
 
       <Pressable style={styles.nextBtn} onPress={() => navigation.goBack()}>
         <Text style={styles.nextBtnText}>Done</Text>

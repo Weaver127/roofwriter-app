@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, Alert } from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useInspection } from "../state/InspectionContext";
 import { computeQASummary } from "../lib/qa";
 
@@ -9,7 +10,8 @@ const severityStyle: Record<string, { bg: string; border: string; text: string }
 };
 
 export default function ReviewSubmitScreen() {
-  const { inspection, update } = useInspection();
+  const navigation = useNavigation<any>();
+  const { inspection } = useInspection();
 
   // Real call to the same computeQASummary() used by the API scaffold's
   // GET /inspections/:id/qa route — this is the actual Section 4 logic,
@@ -57,12 +59,9 @@ export default function ReviewSubmitScreen() {
       <Pressable
         disabled={!canSubmit}
         style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
-        onPress={() => {
-          update((draft) => ({ ...draft, status: "complete" }));
-          Alert.alert("Submitted", "Inspection marked complete.");
-        }}
+        onPress={() => navigation.navigate("ReportPreview")}
       >
-        <Text style={styles.submitBtnText}>{canSubmit ? "Submit report" : `Resolve ${errorCount} error(s) to submit`}</Text>
+        <Text style={styles.submitBtnText}>{canSubmit ? "Preview & sign report" : `Resolve ${errorCount} error(s) to continue`}</Text>
       </Pressable>
     </View>
   );
