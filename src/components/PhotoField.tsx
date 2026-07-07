@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { PhotoAnnotationModal, PhotoMarker } from "./PhotoAnnotationModal";
 
 interface PhotoFieldProps {
   label: string;
@@ -9,14 +10,10 @@ interface PhotoFieldProps {
   required?: boolean;
 }
 
-/**
- * Real photo capture, not a placeholder button. Uses expo-image-picker's
- * camera launcher rather than expo-camera's full custom camera view — this
- * is the right tradeoff for an inspection app: it's the same native camera
- * UI the assessor already knows, with less custom UI for us to get wrong.
- * Falls back to the photo library on simulators/devices without a camera.
- */
 export function PhotoField({ label, photos, onChange, required }: PhotoFieldProps) {
+  const [annotatingUri, setAnnotatingUri] = useState<string | null>(null);
+  const [annotations, setAnnotations] = useState<Record<string, PhotoMarker[]>>({});
+
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -26,6 +23,18 @@ export function PhotoField({ label, photos, onChange, required }: PhotoFieldProp
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled && result.assets?.[0]?.uri) {
       onChange([...photos, result.assets[0].uri]);
+    }
+  };
+
+  const pickFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Photo library permission needed", "RoofWriter needs photo library access to attach existing photos.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.7, allowsMultipleSelection: true });
+    if (!result.canceled && result.assets?.length) {
+      onChange([...photos, ...result.assets.map((a) => a.uri)]);
     }
   };
 
@@ -46,12 +55,31 @@ export function PhotoField({ label, photos, onChange, required }: PhotoFieldProp
             <Pressable style={styles.removeBtn} onPress={() => removePhoto(i)}>
               <Text style={styles.removeBtnText}>×</Text>
             </Pressable>
+            <Pressable style={styles.annotateBtn} onPress={() => setAnnotatingUri(uri)}>
+              <Text style={styles.annotateBtnText}>{annotations[uri]?.length ? "Edit marks" : "Annotate"}</Text>
+            </Pressable>
           </View>
         ))}
         <Pressable style={styles.addBtn} onPress={takePhoto}>
-          <Text style={styles.addBtnText}>+ Photo</Text>
+          <Text style={styles.addBtnText}>Camera</Text>
+        </Pressable>
+        <Pressable style={styles.addBtn} onPress={pickFromLibrary}>
+          <Text style={styles.addBtnText}>Gallery</Text>
         </Pressable>
       </View>
+
+      {annotatingUri && (
+        <PhotoAnnotationModal
+          visible={!!annotatingUri}
+          photoUri={annotatingUri}
+          initialMarkers={annotations[annotatingUri] ?? []}
+          onSave={(markers) => {
+            setAnnotations((prev) => ({ ...prev, [annotatingUri]: markers }));
+            setAnnotatingUri(null);
+          }}
+          onClose={() => setAnnotatingUri(null)}
+        />
+      )}
     </View>
   );
 }
@@ -61,14 +89,19 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: "#8a8a90", marginBottom: 6 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   thumbWrap: { position: "relative" },
-  thumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: "#f0f0f0" },
+  thumb: { width: 76, height: 76, borderRadius: 8, backgroundColor: "#f0f0f0" },
   removeBtn: {
     position: "absolute", top: -6, right: -6, backgroundColor: "#111114",
-    width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center",
+    width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", zIndex: 2,
   },
   removeBtnText: { color: "#fff", fontSize: 13, lineHeight: 14 },
+  annotateBtn: {
+    position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(17,17,20,0.85)",
+    paddingVertical: 3, alignItems: "center", borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+  },
+  annotateBtnText: { color: "#fff", fontSize: 8, fontWeight: "600" },
   addBtn: {
-    width: 64, height: 64, borderRadius: 8, borderWidth: 1, borderColor: "#d8d8dc", borderStyle: "dashed",
+    width: 76, height: 76, borderRadius: 8, borderWidth: 1, borderColor: "#d8d8dc", borderStyle: "dashed",
     alignItems: "center", justifyContent: "center",
   },
   addBtnText: { fontSize: 10, color: "#5a5a60", textAlign: "center" },
