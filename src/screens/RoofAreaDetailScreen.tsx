@@ -5,7 +5,7 @@ import { useInspection } from "../state/InspectionContext";
 import { manual } from "../types/inspection";
 import { PhotoField } from "../components/PhotoField";
 import { AnalyzablePhotoField } from "../components/AnalyzablePhotoField";
-import type { MaterialPrimary, MaterialSecondary, InsurableEventType } from "../types/inspection";
+import type { MaterialPrimary, MaterialSecondary, InsurableEventType, RoofType } from "../types/inspection";
 
 const METAL_OPTIONS: MaterialSecondary[] = [
   "custom_orb", "trimdek", "klip_lok_700_hs", "klip_lok_406", "spandek", "longline_305", "other_metal",
@@ -80,13 +80,37 @@ export default function RoofAreaDetailScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.label}>Area name (e.g. "Main house", "Rear shed")</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Optional label for this roof area"
-        value={labelText}
-        onChangeText={handleLabelChange}
-      />
+      <Text style={styles.label}>Roof type <Text style={styles.required}>*</Text></Text>
+      <View style={styles.chipRowWrap}>
+        {(
+          [
+            { value: "main", label: "Main Roof" },
+            { value: "carport", label: "Carport" },
+            { value: "shed", label: "Shed" },
+            { value: "granny_flat", label: "Granny Flat" },
+            { value: "other", label: "Other" },
+          ] as { value: RoofType; label: string }[]
+        ).map((opt) => (
+          <Pressable
+            key={opt.value}
+            style={[styles.chipSmall, area.roofType.value === opt.value && styles.chipActive]}
+            onPress={() => updateRoofArea(roofAreaId, (a) => ({ ...a, roofType: manual(opt.value) }))}
+          >
+            <Text style={[styles.chipTextSmall, area.roofType.value === opt.value && styles.chipTextActive]}>
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {area.roofType.value === "other" && (
+        <TextInput
+          style={styles.input}
+          placeholder="Enter a name for this roof area"
+          value={labelText}
+          onChangeText={handleLabelChange}
+        />
+      )}
 
       <Text style={styles.label}>Material — primary</Text>
       <View style={styles.chipRow}>
@@ -201,6 +225,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
   content: { padding: 16, gap: 4 },
   label: { fontSize: 12, color: "#8a8a90", marginTop: 14, marginBottom: 6 },
+  required: { color: "#b91c1c" },
   chipRow: { flexDirection: "row", gap: 8 },
   chipRowWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: { flex: 1, borderWidth: 1, borderColor: "#d8d8dc", borderRadius: 8, paddingVertical: 10, alignItems: "center" },
