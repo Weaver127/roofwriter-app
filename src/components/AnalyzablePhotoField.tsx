@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Image, Pressable, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "../constants/api";
+import { PhotoAnnotationModal, PhotoMarker } from "./PhotoAnnotationModal";
 
 interface AnalysisResult {
   description: string;
@@ -28,6 +29,8 @@ export function AnalyzablePhotoField({
 }: AnalyzablePhotoFieldProps) {
   const [analyzingUri, setAnalyzingUri] = useState<string | null>(null);
   const [base64Map, setBase64Map] = useState<Record<string, string>>({});
+  const [annotatingUri, setAnnotatingUri] = useState<string | null>(null);
+  const [annotations, setAnnotations] = useState<Record<string, PhotoMarker[]>>({});
 
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -67,7 +70,7 @@ export function AnalyzablePhotoField({
   const analyzePhoto = async (uri: string) => {
     const base64 = base64Map[uri];
     if (!base64) {
-      Alert.alert("Can't analyze this photo", "This photo's data isn't available for analysis (it may have been added before this feature was enabled). Try removing and re-adding it.");
+      Alert.alert("Can't analyze this photo", "This photo's data isn't available for analysis. Try removing and re-adding it.");
       return;
     }
 
@@ -89,7 +92,7 @@ export function AnalyzablePhotoField({
     } catch (err) {
       Alert.alert(
         "Analysis failed",
-        `Couldn't reach the AI analysis service. This can happen on the first request after the server has been idle (it takes 30-60 seconds to wake up on the free tier) — try again in a moment.\n\nDetails: ${(err as Error).message}`
+        `Couldn't reach the AI analysis service. This can happen on the first request after the server has been idle — try again in a moment.\n\nDetails: ${(err as Error).message}`
       );
     } finally {
       setAnalyzingUri(null);
@@ -114,9 +117,14 @@ export function AnalyzablePhotoField({
                 <ActivityIndicator size="small" color="#fff" />
               </View>
             ) : (
-              <Pressable style={styles.analyzeBtn} onPress={() => analyzePhoto(uri)}>
-                <Text style={styles.analyzeBtnText}>Analyze</Text>
-              </Pressable>
+              <View style={styles.actionRow}>
+                <Pressable style={styles.actionBtn} onPress={() => analyzePhoto(uri)}>
+                  <Text style={styles.actionBtnText}>Analyze</Text>
+                </Pressable>
+                <Pressable style={styles.actionBtn} onPress={() => setAnnotatingUri(uri)}>
+                  <Text style={styles.actionBtnText}>{annotations[uri]?.length ? "Marks" : "Annotate"}</Text>
+                </Pressable>
+              </View>
             )}
           </View>
         ))}
@@ -127,6 +135,19 @@ export function AnalyzablePhotoField({
           <Text style={styles.addBtnText}>Gallery</Text>
         </Pressable>
       </View>
+
+      {annotatingUri && (
+        <PhotoAnnotationModal
+          visible={!!annotatingUri}
+          photoUri={annotatingUri}
+          initialMarkers={annotations[annotatingUri] ?? []}
+          onSave={(markers) => {
+            setAnnotations((prev) => ({ ...prev, [annotatingUri]: markers }));
+            setAnnotatingUri(null);
+          }}
+          onClose={() => setAnnotatingUri(null)}
+        />
+      )}
     </View>
   );
 }
@@ -142,11 +163,12 @@ const styles = StyleSheet.create({
     width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", zIndex: 2,
   },
   removeBtnText: { color: "#fff", fontSize: 13, lineHeight: 14 },
-  analyzeBtn: {
-    position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(17,17,20,0.85)",
-    paddingVertical: 3, alignItems: "center", borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+  actionRow: {
+    position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row",
+    borderBottomLeftRadius: 8, borderBottomRightRadius: 8, overflow: "hidden",
   },
-  analyzeBtnText: { color: "#fff", fontSize: 9, fontWeight: "600" },
+  actionBtn: { flex: 1, backgroundColor: "rgba(17,17,20,0.85)", paddingVertical: 3, alignItems: "center" },
+  actionBtnText: { color: "#fff", fontSize: 8, fontWeight: "600" },
   analyzeOverlay: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(17,17,20,0.55)",
     alignItems: "center", justifyContent: "center", borderRadius: 8,
