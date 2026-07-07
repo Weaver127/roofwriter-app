@@ -1,29 +1,15 @@
 import React, { createContext, useContext, useReducer, ReactNode } from "react";
-import { Inspection, RoofArea, aiDraft } from "../types/inspection";
+import { Inspection, RoofArea, manual, aiDraft } from "../types/inspection";
 import { computePitchCompliance } from "../lib/pitchCompliance";
-
-/**
- * One shared state store for the whole inspection, so screens don't each
- * invent their own local state that then needs manually wiring together
- * at submit time. Every screen in src/screens reads from and writes to
- * this via useInspection().
- *
- * This is intentionally a plain useReducer, not a state library
- * (Redux/Zustand/etc.) — the app is one linear form flow, not a complex
- * app with many independent state slices, so the extra dependency isn't
- * earning its keep yet. Revisit if/when the app grows features like
- * offline sync queues that genuinely need more sophisticated state
- * management (see product spec Section 7 on offline-first requirements).
- */
 
 function emptyRoofArea(): RoofArea {
   return {
     id: Math.random().toString(36).slice(2),
-    roofType: aiDraft("main"),
+    roofType: manual("main"),
     pitchDegrees: aiDraft(0),
     pitchCaptureMethod: "typed",
-    materialPrimary: aiDraft("metal"),
-    materialSecondary: aiDraft("custom_orb"),
+    materialPrimary: manual("metal"),
+    materialSecondary: manual("custom_orb"),
     pitchCompliance: { tier: "no_minimum", message: "Not yet assessed.", minimumPitch: null },
     railOrScaffoldRequired: false,
     eventType: "none",
@@ -131,11 +117,7 @@ export function InspectionProvider({ children }: { children: ReactNode }) {
       roofAreas: draft.roofAreas.map((a) => {
         if (a.id !== id) return a;
         const updated = patch(a);
-        // Pitch compliance is [AI-COMPUTED] — always recalculated here, never
-        // set directly by a screen. Matches the server-side recompute in the
-        // API scaffold's routes/inspections.ts, for the same reason: don't
-        // trust a stale or client-set value for this field.
-        if (updated.materialPrimary.confirmed && updated.materialSecondary.confirmed && updated.pitchDegrees.confirmed) {
+        if (updated.pitchDegrees.confirmed) {
           updated.pitchCompliance = computePitchCompliance(
             updated.materialPrimary.value,
             updated.materialSecondary.value,
