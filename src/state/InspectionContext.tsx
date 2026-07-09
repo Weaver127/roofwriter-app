@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useReducer, ReactNode } from "react";
+import React, { createContext, useContext, useReducer, useState, useEffect, ReactNode } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Inspection, RoofArea, manual, aiDraft } from "../types/inspection";
 import { computePitchCompliance } from "../lib/pitchCompliance";
+
+const STORAGE_KEY = "roofwriter:inspections";
 
 function emptyRoofArea(): RoofArea {
   return {
@@ -81,12 +84,15 @@ function emptyInspection(): Inspection {
 
 type Action =
   | { type: "UPDATE"; patch: (draft: Inspection) => Inspection }
+  | { type: "LOAD"; inspection: Inspection }
   | { type: "RESET" };
 
 function reducer(state: Inspection, action: Action): Inspection {
   switch (action.type) {
     case "UPDATE":
       return action.patch(state);
+    case "LOAD":
+      return action.inspection;
     case "RESET":
       return emptyInspection();
     default:
@@ -96,18 +102,63 @@ function reducer(state: Inspection, action: Action): Inspection {
 
 interface InspectionContextValue {
   inspection: Inspection;
+  inspections: Inspection[];
+  loadingSavedReports: boolean;
   update: (patch: (draft: Inspection) => Inspection) => void;
   updateRoofArea: (id: string, patch: (area: RoofArea) => RoofArea) => void;
   addRoofArea: () => void;
   duplicateRoofArea: (id: string) => void;
   removeRoofArea: (id: string) => void;
   reset: () => void;
+  startNewInspection: () => void;
+  loadInspection: (id: string) => void;
+  deleteInspection: (id: string) => Promise<void>;
 }
 
 const InspectionContext = createContext<InspectionContextValue | null>(null);
 
 export function InspectionProvider({ children }: { children: ReactNode }) {
   const [inspection, dispatch] = useReducer(reducer, undefined, emptyInspection);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [loadingSavedReports, setLoadingSavedReports] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) setInspections(JSON.parse(raw));
+      } catch (e) {
+        console.warn("Failed to load saved inspections", e);
+      } finally {
+        setLoadingSavedReports(false);
+      }
+    })();
+  }, []);
+
+  const persistList = async (list: Inspection[]) => {
+    setInspections(list);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn("Failed to save inspections", e);
+    }
+  };
+
+  useEffect(() => {
+    if (loadingSavedReports) return;
+    setInspections((current) => {
+      const existingIndex = current.findIndex((i) => i.id === inspection.id);
+      const next =
+        existingIndex === -1
+          ? [...current, inspection]
+          : current.map((i) => (i.id === inspection.id ? inspection : i));
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch((e) =>
+        console.warn("Failed to save inspections", e)
+      );
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspection, loadingSavedReports]);
 
   const update = (patch: (draft: Inspection) => Inspection) => dispatch({ type: "UPDATE", patch });
 
@@ -146,9 +197,34 @@ export function InspectionProvider({ children }: { children: ReactNode }) {
 
   const reset = () => dispatch({ type: "RESET" });
 
+  const startNewInspection = () => dispatch({ type: "RESET" });
+
+  const loadInspection = (id: string) => {
+    const found = inspections.find((i) => i.id === id);
+    if (found) dispatch({ type: "LOAD", inspection: found });
+  };
+
+  const deleteInspection = async (id: string) => {
+    const next = inspections.filter((i) => i.id !== id);
+    await persistList(next);
+  };
+
   return (
     <InspectionContext.Provider
-      value={{ inspection, update, updateRoofArea, addRoofArea, duplicateRoofArea, removeRoofArea, reset }}
+      value={{
+        inspection,
+        inspections,
+        loadingSavedReports,
+        update,
+        updateRoofArea,
+        addRoofArea,
+        duplicateRoofArea,
+        removeRoofArea,
+        reset,
+        startNewInspection,
+        loadInspection,
+        deleteInspection,
+      }}
     >
       {children}
     </InspectionContext.Provider>
