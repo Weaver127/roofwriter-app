@@ -2,6 +2,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 
+import HomeScreen from "../screens/HomeScreen";
 import JobDetailsScreen from "../screens/JobDetailsScreen";
 import RoofAccessScreen from "../screens/RoofAccessScreen";
 import RoofAreasListScreen from "../screens/RoofAreasListScreen";
@@ -15,6 +16,7 @@ import ReviewSubmitScreen from "../screens/ReviewSubmitScreen";
 import ReportPreviewScreen from "../screens/ReportPreviewScreen";
 
 export type RootStackParamList = {
+  Home: undefined;
   JobDetails: undefined;
   RoofAccess: undefined;
   RoofAreasList: undefined;
@@ -34,6 +36,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerBackTitle: "Back" }}>
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "My Reports" }} />
         <Stack.Screen name="JobDetails" component={JobDetailsScreen} options={{ title: "Job details" }} />
         <Stack.Screen name="RoofAccess" component={RoofAccessScreen} options={{ title: "Roof access" }} />
         <Stack.Screen name="RoofAreasList" component={RoofAreasListScreen} options={{ title: "Roof areas" }} />
