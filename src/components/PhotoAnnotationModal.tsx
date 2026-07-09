@@ -70,20 +70,39 @@ export function PhotoAnnotationModal({ visible, photoUri, initialMarkers, onSave
 
   const undo = () => setMarkers((prev) => prev.slice(0, -1));
 
-  const lineDots = (m: PhotoMarker) => {
-    if (m.x2 === undefined || m.y2 === undefined) return null;
-    const dx = m.x2 - m.x;
-    const dy = m.y2 - m.y;
+  const dotsBetween = (x1: number, y1: number, x2: number, y2: number, keyPrefix: string) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
     const distance = Math.sqrt(dx * dx + dy * dy);
     const steps = Math.max(2, Math.floor(distance / 4));
     const dots = [];
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       dots.push(
-        <View key={i} style={[styles.lineDot, { left: m.x + dx * t - 2, top: m.y + dy * t - 2 }]} />
+        <View key={`${keyPrefix}-${i}`} style={[styles.lineDot, { left: x1 + dx * t - 2, top: y1 + dy * t - 2 }]} />
       );
     }
     return dots;
+  };
+
+  const renderArrow = (m: PhotoMarker) => {
+    if (m.x2 === undefined || m.y2 === undefined) return null;
+    const dx = m.x2 - m.x;
+    const dy = m.y2 - m.y;
+    const angle = Math.atan2(dy, dx);
+    const headLength = 14;
+    const headAngle = 0.45;
+    const wing1x = m.x2 - headLength * Math.cos(angle - headAngle);
+    const wing1y = m.y2 - headLength * Math.sin(angle - headAngle);
+    const wing2x = m.x2 - headLength * Math.cos(angle + headAngle);
+    const wing2y = m.y2 - headLength * Math.sin(angle + headAngle);
+    return (
+      <React.Fragment>
+        {dotsBetween(m.x, m.y, m.x2, m.y2, `${m.id}-shaft`)}
+        {dotsBetween(m.x2, m.y2, wing1x, wing1y, `${m.id}-w1`)}
+        {dotsBetween(m.x2, m.y2, wing2x, wing2y, `${m.id}-w2`)}
+      </React.Fragment>
+    );
   };
 
   return (
@@ -106,7 +125,7 @@ export function PhotoAnnotationModal({ visible, photoUri, initialMarkers, onSave
               return <View key={m.id} style={[styles.circleMarker, { left: m.x - 22, top: m.y - 22 }]} />;
             }
             if (m.type === "line") {
-              return <React.Fragment key={m.id}>{lineDots(m)}</React.Fragment>;
+              return <React.Fragment key={m.id}>{renderArrow(m)}</React.Fragment>;
             }
             return (
               <View key={m.id} style={[styles.textMarker, { left: m.x, top: m.y }]}>
